@@ -1,6 +1,6 @@
 import xrpl from "xrpl";
 import { createHash } from "node:crypto";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 
 // Charge les seeds depuis le fichier .env
 process.loadEnvFile();
@@ -57,4 +57,67 @@ export async function creerLot(client, fiche) {
   );
 
   return { nftId, empreinte, hash: res.result.hash };
+}
+
+// Relit la fiche off-chain d'un lot
+export function lireLot(lot) {
+  return JSON.parse(readFileSync(`data/${lot}.json`, "utf8"));
+}
+
+// Arrête tout si une transaction n'a pas réussi
+function verifier(res, etape) {
+  const resultat = res.result.meta.TransactionResult;
+  if (resultat !== "tesSUCCESS") throw new Error(`${etape} refusée : ${resultat}`);
+}
+
+// Transfère la responsabilité d'un lot d'un acteur à un autre
+export async function transfererLot(client, lot, de, vers, motif) {
+  const cedant = compte(de);
+  const receveur = compte(vers);
+  const { nftId } = lireLot(lot);
+
+  // 1. Le cédant propose le lot au receveur
+  const offre = await client.submitAndWait(
+    {
+      TransactionType: "NFTokenCreateOffer",
+      Account: cedant.address,
+      NFTokenID: nftId,
+      Amount: "0", // on transfère une responsabilité, pas une vente
+      Destination: receveur.address, // seul le receveur peut accepter
+      Flags: 1, // tfSellNFToken
+      Memos: [
+        {
+          Memo: {
+            MemoData: xrpl.convertStringToHex(
+              `TRANSFERT ${lot} ${de} > ${vers} : ${motif}`
+            ),
+          },
+        },
+      ],
+    },
+    { wallet: cedant }
+  );
+  verifier(offre, "Offre");
+
+  const offreId =
+    offre.result.meta.offer_id ??
+    offre.result.meta.AffectedNodes.find(
+      (n) => n.CreatedNode?.LedgerEntryType === "NFTokenOffer"
+    ).CreatedNode.LedgerIndex;
+
+  // 2. Le receveur accepte : il devient responsable du lot
+  const acceptation = await client.submitAndWait(
+    {
+      TransactionType: "NFTokenAcceptOffer",
+      Account: receveur.address,
+      NFTokenSellOffer: offreId,
+    },
+    { wallet: receveur }
+  );
+  verifier(acceptation, "Acceptation");
+
+  return {
+    hashOffre: offre.result.hash,
+    hashAcceptation: acceptation.result.hash,
+  };
 }
