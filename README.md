@@ -66,6 +66,14 @@ node cli/transferer-lot.mjs LOT-002 tannerie atelier "Tentative de fraude"
 
 Chaque commande affiche un lien vers la transaction dans l'explorateur.
 
+## Interface web
+
+```
+node server.mjs
+```
+
+Puis ouvrir http://localhost:3000. La page permet de créer un lot, de transférer sa responsabilité et de consulter son historique. Les seeds restent côté serveur : le navigateur ne voit que les adresses publiques.
+
 ## Limites
 
 - La blockchain garantit que la donnée n'a pas été modifiée, pas qu'elle était vraie à la saisie.

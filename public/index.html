@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TraceLot</title>
+<style>
+  :root {
+    --encre: #1d1b18;
+    --gris: #6b665e;
+    --trait: #ded8cd;
+    --fond: #f6f3ee;
+    --carte: #ffffff;
+    --cuir: #8a4b23;
+    --ok: #1f6b45;
+    --erreur: #a3271f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    color: var(--encre);
+    background: var(--fond);
+    line-height: 1.5;
+  }
+  header {
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid var(--trait);
+    background: var(--carte);
+  }
+  header h1 { margin: 0; font-size: 26px; letter-spacing: 0.02em; }
+  header h1 span { color: var(--cuir); }
+  header p { margin: 4px 0 0; color: var(--gris); }
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 32px 48px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  section {
+    background: var(--carte);
+    border: 1px solid var(--trait);
+    border-radius: 8px;
+    padding: 20px;
+  }
+  section.large { grid-column: 1 / -1; }
+  h2 { margin: 0 0 4px; font-size: 17px; }
+  .aide { margin: 0 0 14px; color: var(--gris); font-size: 14px; }
+  label { display: block; font-size: 13px; color: var(--gris); margin: 10px 0 3px; }
+  input, select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--trait);
+    border-radius: 6px;
+    font: inherit;
+    background: #fff;
+  }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--cuir); outline-offset: 1px; }
+  .ligne { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  button {
+    margin-top: 16px;
+    padding: 9px 16px;
+    border: 0;
+    border-radius: 6px;
+    background: var(--cuir);
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.5; cursor: wait; }
+  .message { margin-top: 12px; font-size: 14px; min-height: 21px; overflow-wrap: anywhere; }
+  .message.ok { color: var(--ok); }
+  .message.erreur { color: var(--erreur); }
+  a { color: var(--cuir); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--trait); }
+  th { color: var(--gris); font-weight: 600; }
+  td.adresse { font-family: Consolas, monospace; font-size: 13px; overflow-wrap: anywhere; }
+  .barre { display: flex; gap: 12px; align-items: end; }
+  .barre > div { flex: 1; }
+  .barre button { margin-top: 0; }
+  #detenteur { margin: 16px 0 8px; font-weight: 600; }
+  ol.frise { list-style: none; margin: 0; padding: 0 0 0 18px; border-left: 2px solid var(--trait); }
+  ol.frise li { position: relative; padding: 0 0 16px 16px; }
+  ol.frise li::before {
+    content: "";
+    position: absolute;
+    left: -25px;
+    top: 6px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--cuir);
+    border: 2px solid var(--carte);
+  }
+  .quand { font-size: 13px; color: var(--gris); }
+  .quoi { font-weight: 600; }
+  .memo { font-size: 14px; color: var(--gris); }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Trace<span>Lot</span></h1>
+  <p>Traçabilité de lots de cuir sur le XRP Ledger (Testnet)</p>
+</header>
+
+<main>
+  <section>
+    <h2>1. Créer un lot</h2>
+    <p class="aide">La tannerie émet un NFT. Seule l'empreinte de la fiche est inscrite sur la blockchain.</p>
+    <form id="form-creer">
+      <label for="c-lot">Référence du lot</label>
+      <input id="c-lot" placeholder="LOT-002" required pattern="[A-Za-z0-9\-]{1,20}">
+      <div class="ligne">
+        <div>
+          <label for="c-matiere">Matière</label>
+          <input id="c-matiere" value="cuir pleine fleur">
+        </div>
+        <div>
+          <label for="c-quantite">Quantité</label>
+          <input id="c-quantite" value="50 peaux">
+        </div>
+      </div>
+      <button type="submit">Créer le lot</button>
+      <div class="message" id="msg-creer"></div>
+    </form>
+  </section>
+
+  <section>
+    <h2>2. Transférer la responsabilité</h2>
+    <p class="aide">Le cédant signe une offre, le receveur signe l'acceptation : deux transactions.</p>
+    <form id="form-transfert">
+      <label for="t-lot">Lot</label>
+      <select id="t-lot" required></select>
+      <div class="ligne">
+        <div>
+          <label for="t-de">Cédant</label>
+          <select id="t-de"></select>
+        </div>
+        <div>
+          <label for="t-vers">Receveur</label>
+          <select id="t-vers"></select>
+        </div>
+      </div>
+      <label for="t-motif">Motif</label>
+      <input id="t-motif" value="Remise au transporteur">
+      <button type="submit">Transférer</button>
+      <div class="message" id="msg-transfert"></div>
+    </form>
+  </section>
+
+  <section class="large">
+    <h2>3. Historique d'un lot</h2>
+    <p class="aide">Reconstitué à partir des transactions du ledger. Chaque étape renvoie à sa preuve dans l'explorateur.</p>
+    <div class="barre">
+      <div>
+        <label for="h-lot">Lot</label>
+        <select id="h-lot"></select>
+      </div>
+      <button type="button" id="btn-historique">Afficher l'historique</button>
+    </div>
+    <div class="message" id="msg-historique"></div>
+    <div id="detenteur"></div>
+    <ol class="frise" id="frise"></ol>
+  </section>
+
+  <section class="large">
+    <h2>Acteurs de la filière</h2>
+    <p class="aide">Comptes de test sur le XRPL Testnet. Seules les adresses publiques sont affichées.</p>
+    <table>
+      <thead><tr><th>Acteur</th><th>Adresse</th></tr></thead>
+      <tbody id="acteurs"></tbody>
+    </table>
+  </section>
+</main>
+
+<script>
+const EXPLORATEUR = "https://testnet.xrpl.org";
+const $ = (id) => document.getElementById(id);
+
+// Appel à notre serveur : GET sans corps, POST avec corps
+async function api(url, corps) {
+  const options = corps
+    ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corps) }
+    : undefined;
+  const reponse = await fetch(url, options);
+  const donnees = await reponse.json();
+  if (!reponse.ok) throw new Error(donnees.erreur || "Erreur inconnue");
+  return donnees;
+}
+
+function lien(url, texte) {
+  const a = document.createElement("a");
+  a.href = url;
+  a.target = "_blank";
+  a.rel = "noopener";
+  a.textContent = texte;
+  return a;
+}
+
+function message(id, texte, type, url) {
+  const zone = $(id);
+  zone.className = "message " + (type || "");
+  zone.textContent = texte;
+  if (url) {
+    zone.append(" ");
+    zone.append(lien(url, "Voir la preuve"));
+  }
+}
+
+function remplir(select, valeurs) {
+  const ancien = select.value;
+  select.replaceChildren();
+  for (const v of valeurs) {
+    const option = document.createElement("option");
+    option.value = v;
+    option.textContent = v;
+    select.append(option);
+  }
+  if (valeurs.includes(ancien)) select.value = ancien;
+}
+
+async function chargerActeurs() {
+  const acteurs = await api("/api/acteurs");
+  const roles = acteurs.map((a) => a.role);
+  remplir($("t-de"), roles);
+  remplir($("t-vers"), roles);
+  $("t-vers").value = roles[1];
+  const corps = $("acteurs");
+  corps.replaceChildren();
+  for (const a of acteurs) {
+    const tr = document.createElement("tr");
+    const tdRole = document.createElement("td");
+    tdRole.textContent = a.role;
+    const tdAdresse = document.createElement("td");
+    tdAdresse.className = "adresse";
+    tdAdresse.append(lien(`${EXPLORATEUR}/accounts/${a.adresse}`, a.adresse));
+    tr.append(tdRole, tdAdresse);
+    corps.append(tr);
+  }
+}
+
+async function chargerLots() {
+  const lots = await api("/api/lots");
+  const noms = lots.map((l) => l.fiche.lot);
+  remplir($("t-lot"), noms);
+  remplir($("h-lot"), noms);
+}
+
+function decrire(e) {
+  if (e.type === "NFTokenMint") return `Création du lot par : ${e.acteur}`;
+  if (e.type === "NFTokenCreateOffer") return `${e.acteur} propose le lot à : ${e.vers}`;
+  if (e.type === "NFTokenAcceptOffer") return `${e.acteur} accepte le lot et en devient responsable`;
+  return e.type;
+}
+
+async function afficherHistorique(lot) {
+  if (!lot) return;
+  $("h-lot").value = lot;
+  message("msg-historique", "Lecture du ledger en cours…");
+  $("frise").replaceChildren();
+  $("detenteur").textContent = "";
+  try {
+    const evenements = await api(`/api/lots/${encodeURIComponent(lot)}/historique`);
+    let detenteur = "inconnu";
+    for (const e of evenements) {
+      if (e.type === "NFTokenMint" || e.type === "NFTokenAcceptOffer") detenteur = e.acteur;
+      const li = document.createElement("li");
+      const quand = document.createElement("div");
+      quand.className = "quand";
+      quand.textContent = new Date(e.date).toLocaleString("fr-FR");
+      const quoi = document.createElement("div");
+      quoi.className = "quoi";
+      quoi.textContent = decrire(e);
+      li.append(quand, quoi);
+      if (e.memo) {
+        const memo = document.createElement("div");
+        memo.className = "memo";
+        memo.textContent = "Memo : " + e.memo;
+        li.append(memo);
+      }
+      li.append(lien(`${EXPLORATEUR}/transactions/${e.hash}`, "Preuve dans l'explorateur"));
+      $("frise").append(li);
+    }
+    message("msg-historique", `${evenements.length} transactions trouvées pour ${lot}.`, "ok");
+    $("detenteur").textContent = "Détenteur actuel : " + detenteur;
+  } catch (erreur) {
+    message("msg-historique", erreur.message, "erreur");
+  }
+}
+
+$("form-creer").addEventListener("submit", async (evenement) => {
+  evenement.preventDefault();
+  const bouton = evenement.target.querySelector("button");
+  bouton.disabled = true;
+  message("msg-creer", "Transaction en cours sur le Testnet…");
+  try {
+    const lot = $("c-lot").value.trim();
+    const r = await api("/api/lots", {
+      lot,
+      matiere: $("c-matiere").value,
+      quantite: $("c-quantite").value,
+    });
+    message("msg-creer", `Lot ${lot} créé.`, "ok", `${EXPLORATEUR}/transactions/${r.hash}`);
+    await chargerLots();
+    $("t-lot").value = lot;
+    await afficherHistorique(lot);
+  } catch (erreur) {
+    message("msg-creer", erreur.message, "erreur");
+  }
+  bouton.disabled = false;
+});
+
+$("form-transfert").addEventListener("submit", async (evenement) => {
+  evenement.preventDefault();
+  const bouton = evenement.target.querySelector("button");
+  bouton.disabled = true;
+  message("msg-transfert", "Deux transactions en cours sur le Testnet…");
+  try {
+    const lot = $("t-lot").value;
+    const r = await api("/api/transferts", {
+      lot,
+      de: $("t-de").value,
+      vers: $("t-vers").value,
+      motif: $("t-motif").value,
+    });
+    message(
+      "msg-transfert",
+      `Lot ${lot} transféré : ${$("t-de").value} > ${$("t-vers").value}.`,
+      "ok",
+      `${EXPLORATEUR}/transactions/${r.hashAcceptation}`
+    );
+    await afficherHistorique(lot);
+  } catch (erreur) {
+    message("msg-transfert", "Transfert refusé : " + erreur.message, "erreur");
+  }
+  bouton.disabled = false;
+});
+
+$("btn-historique").addEventListener("click", () => afficherHistorique($("h-lot").value));
+
+await_demarrage();
+async function await_demarrage() {
+  try {
+    await chargerActeurs();
+    await chargerLots();
+  } catch (erreur) {
+    message("msg-historique", "Serveur injoignable : " + erreur.message, "erreur");
+  }
+}
+</script>
+</body>
+</html>
