@@ -121,3 +121,50 @@ export async function transfererLot(client, lot, de, vers, motif) {
     hashAcceptation: acceptation.result.hash,
   };
 }
+
+export const ROLES = ["tannerie", "transporteur", "atelier", "boutique"];
+
+// Reconstitue l'historique d'un lot à partir du ledger
+export async function historiqueLot(client, lot) {
+  const { nftId } = lireLot(lot);
+
+  // Table adresse > rôle, pour afficher des noms lisibles
+  const roleDe = {};
+  for (const role of ROLES) roleDe[compte(role).address] = role;
+
+  const evenements = new Map(); // évite les doublons, par hash
+
+  for (const adresse of Object.keys(roleDe)) {
+    const reponse = await client.request({
+      command: "account_tx",
+      account: adresse,
+      limit: 200,
+    });
+
+    for (const e of reponse.result.transactions) {
+      const tx = e.tx_json ?? e.tx;
+      const concerneLeLot =
+        e.meta?.nftoken_id === nftId || tx.NFTokenID === nftId;
+      if (!concerneLeLot) continue;
+      if (e.meta.TransactionResult !== "tesSUCCESS") continue;
+
+      const hash = e.hash ?? tx.hash;
+      const memoHex = tx.Memos?.[0]?.Memo?.MemoData;
+      evenements.set(hash, {
+        hash,
+        ledger: e.ledger_index ?? tx.ledger_index,
+        rang: e.meta.TransactionIndex,
+        date: e.close_time_iso ?? xrpl.rippleTimeToISOTime(tx.date),
+        type: tx.TransactionType,
+        acteur: roleDe[tx.Account] ?? tx.Account,
+        vers: roleDe[tx.Destination] ?? null,
+        memo: memoHex ? xrpl.convertHexToString(memoHex) : "",
+      });
+    }
+  }
+
+  // Ordre chronologique : par ledger, puis par rang dans le ledger
+  return [...evenements.values()].sort(
+    (a, b) => a.ledger - b.ledger || a.rang - b.rang
+  );
+}
