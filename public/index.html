@@ -96,6 +96,16 @@
     background: var(--cuir);
     border: 2px solid var(--carte);
   }
+  .etat { margin-top: 6px; font-size: 14px; font-weight: 600; min-height: 21px; }
+  .boutons { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+  .boutons > div { flex: 1; min-width: 180px; }
+  .boutons button { margin-top: 0; }
+  button.discret { background: #fff; color: var(--cuir); border: 1px solid var(--cuir); }
+  #verdict { margin: 14px 0 10px; font-weight: 700; font-size: 16px; }
+  #verdict.ok { color: var(--ok); }
+  #verdict.erreur { color: var(--erreur); }
+  td.empreinte { font-family: Consolas, monospace; font-size: 13px; overflow-wrap: anywhere; }
+  .demo { margin-top: 14px; font-size: 13px; color: var(--gris); }
   .quand { font-size: 13px; color: var(--gris); }
   .quoi { font-weight: 600; }
   .memo { font-size: 14px; color: var(--gris); }
@@ -137,6 +147,7 @@
     <form id="form-transfert">
       <label for="t-lot">Lot</label>
       <select id="t-lot" required></select>
+      <div class="etat" id="t-detenteur"></div>
       <div class="ligne">
         <div>
           <label for="t-de">Cédant</label>
@@ -170,6 +181,30 @@
   </section>
 
   <section class="large">
+    <h2>4. Vérifier l'intégrité d'une fiche</h2>
+    <p class="aide">L'empreinte de la fiche off-chain est recalculée, puis comparée à celle inscrite dans le NFT sur le ledger.</p>
+    <div class="boutons">
+      <div>
+        <label for="v-lot">Lot</label>
+        <select id="v-lot"></select>
+      </div>
+      <button type="button" id="btn-verifier">Vérifier l'intégrité</button>
+      <button type="button" class="discret" id="btn-falsifier">Simuler une falsification</button>
+      <button type="button" class="discret" id="btn-restaurer">Restaurer la fiche</button>
+    </div>
+    <div class="message" id="msg-verif"></div>
+    <div id="verdict"></div>
+    <table id="tableau-verif" hidden>
+      <tbody>
+        <tr><th>Fiche off-chain</th><td id="v-fiche"></td></tr>
+        <tr><th>Empreinte recalculée</th><td class="empreinte" id="v-calculee"></td></tr>
+        <tr><th>Empreinte on-chain</th><td class="empreinte" id="v-onchain"></td></tr>
+      </tbody>
+    </table>
+    <p class="demo">Les deux boutons de droite sont des outils de démonstration : ils modifient uniquement le fichier off-chain, jamais la blockchain.</p>
+  </section>
+
+  <section class="large">
     <h2>Acteurs de la filière</h2>
     <p class="aide">Comptes de test sur le XRPL Testnet. Seules les adresses publiques sont affichées.</p>
     <table>
@@ -182,6 +217,13 @@
 <script>
 const EXPLORATEUR = "https://testnet.xrpl.org";
 const $ = (id) => document.getElementById(id);
+let roles = [];
+const MOTIFS = {
+  transporteur: "Remise au transporteur",
+  atelier: "Livraison à l'atelier",
+  boutique: "Produit fini livré en boutique",
+  tannerie: "Retour à la tannerie",
+};
 
 // Appel à notre serveur : GET sans corps, POST avec corps
 async function api(url, corps) {
@@ -227,7 +269,7 @@ function remplir(select, valeurs) {
 
 async function chargerActeurs() {
   const acteurs = await api("/api/acteurs");
-  const roles = acteurs.map((a) => a.role);
+  roles = acteurs.map((a) => a.role);
   remplir($("t-de"), roles);
   remplir($("t-vers"), roles);
   $("t-vers").value = roles[1];
@@ -250,6 +292,64 @@ async function chargerLots() {
   const noms = lots.map((l) => l.fiche.lot);
   remplir($("t-lot"), noms);
   remplir($("h-lot"), noms);
+  remplir($("v-lot"), noms);
+}
+
+// Lit le détenteur actuel sur le ledger et prépare le formulaire de transfert
+async function majDetenteur() {
+  const lot = $("t-lot").value;
+  const zone = $("t-detenteur");
+  if (!lot) {
+    zone.textContent = "";
+    return;
+  }
+  zone.textContent = "Lecture du détenteur sur le ledger…";
+  try {
+    const etat = await api(`/api/lots/${encodeURIComponent(lot)}/etat`);
+    if ($("t-lot").value !== lot) return; // l'utilisateur a changé de lot entre-temps
+    zone.textContent = "Détenteur actuel : " + etat.detenteur;
+    const suivant = roles[(roles.indexOf(etat.detenteur) + 1) % roles.length];
+    $("t-de").value = etat.detenteur;
+    $("t-vers").value = suivant;
+    $("t-motif").value = MOTIFS[suivant] || "Transfert de responsabilité";
+  } catch (erreur) {
+    zone.textContent = "Détenteur inconnu : " + erreur.message;
+  }
+}
+
+// Compare l'empreinte recalculée à l'empreinte on-chain
+async function verifierIntegrite() {
+  const lot = $("v-lot").value;
+  if (!lot) return;
+  message("msg-verif", "Lecture du ledger en cours…");
+  $("verdict").textContent = "";
+  $("verdict").className = "";
+  try {
+    const r = await api(`/api/lots/${encodeURIComponent(lot)}/verification`);
+    $("v-fiche").textContent =
+      `${r.fiche.lot} · ${r.fiche.matiere} · ${r.fiche.quantite} · ${r.fiche.date}`;
+    $("v-calculee").textContent = r.empreinteCalculee;
+    $("v-onchain").textContent = r.empreinteOnChain;
+    $("tableau-verif").hidden = false;
+    $("verdict").className = r.conforme ? "ok" : "erreur";
+    $("verdict").textContent = r.conforme
+      ? "Fiche conforme : les deux empreintes sont identiques."
+      : "Fiche modifiée : les empreintes diffèrent, la falsification est détectée.";
+    message("msg-verif", "");
+  } catch (erreur) {
+    message("msg-verif", erreur.message, "erreur");
+  }
+}
+
+async function outilDemo(action) {
+  const lot = $("v-lot").value;
+  if (!lot) return;
+  try {
+    await api(`/api/lots/${encodeURIComponent(lot)}/${action}`, {});
+    await verifierIntegrite();
+  } catch (erreur) {
+    message("msg-verif", erreur.message, "erreur");
+  }
 }
 
 function decrire(e) {
@@ -309,6 +409,7 @@ $("form-creer").addEventListener("submit", async (evenement) => {
     message("msg-creer", `Lot ${lot} créé.`, "ok", `${EXPLORATEUR}/transactions/${r.hash}`);
     await chargerLots();
     $("t-lot").value = lot;
+    await majDetenteur();
     await afficherHistorique(lot);
   } catch (erreur) {
     message("msg-creer", erreur.message, "erreur");
@@ -335,6 +436,7 @@ $("form-transfert").addEventListener("submit", async (evenement) => {
       "ok",
       `${EXPLORATEUR}/transactions/${r.hashAcceptation}`
     );
+    await majDetenteur();
     await afficherHistorique(lot);
   } catch (erreur) {
     message("msg-transfert", "Transfert refusé : " + erreur.message, "erreur");
@@ -343,12 +445,17 @@ $("form-transfert").addEventListener("submit", async (evenement) => {
 });
 
 $("btn-historique").addEventListener("click", () => afficherHistorique($("h-lot").value));
+$("t-lot").addEventListener("change", majDetenteur);
+$("btn-verifier").addEventListener("click", verifierIntegrite);
+$("btn-falsifier").addEventListener("click", () => outilDemo("falsification"));
+$("btn-restaurer").addEventListener("click", () => outilDemo("restauration"));
 
 await_demarrage();
 async function await_demarrage() {
   try {
     await chargerActeurs();
     await chargerLots();
+    await majDetenteur();
   } catch (erreur) {
     message("msg-historique", "Serveur injoignable : " + erreur.message, "erreur");
   }

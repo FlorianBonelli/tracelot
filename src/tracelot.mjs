@@ -181,19 +181,30 @@ export async function historiqueLot(client, lot) {
 }
 
 
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 // Lit l'état actuel d'un lot sur le ledger : qui le détient, et son empreinte on-chain
+// Jusqu'à 5 essais, car un serveur du Testnet peut être en retard sur les autres
 export async function etatLot(client, lot) {
   const { nftId } = lireLot(lot);
-  for (const role of ROLES) {
-    const reponse = await client.request({
-      command: "account_nfts",
-      account: compte(role).address,
-      limit: 400,
-    });
-    const nft = reponse.result.account_nfts.find((n) => n.NFTokenID === nftId);
-    if (nft) {
-      return { detenteur: role, empreinteOnChain: xrpl.convertHexToString(nft.URI) };
+  for (let essai = 1; essai <= 5; essai++) {
+    for (const role of ROLES) {
+      try {
+        const reponse = await client.request({
+          command: "account_nfts",
+          account: compte(role).address,
+          ledger_index: "validated",
+          limit: 400,
+        });
+        const nft = reponse.result.account_nfts.find((n) => n.NFTokenID === nftId);
+        if (nft) {
+          return { detenteur: role, empreinteOnChain: xrpl.convertHexToString(nft.URI) };
+        }
+      } catch {
+        // serveur pas à jour : on réessaiera
+      }
     }
+    await pause(2000);
   }
   throw new Error(`Le lot ${lot} est introuvable sur le ledger.`);
 }
