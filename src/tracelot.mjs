@@ -168,3 +168,36 @@ export async function historiqueLot(client, lot) {
     (a, b) => a.ledger - b.ledger || a.rang - b.rang
   );
 }
+
+
+// Lit l'état actuel d'un lot sur le ledger : qui le détient, et son empreinte on-chain
+export async function etatLot(client, lot) {
+  const { nftId } = lireLot(lot);
+  for (const role of ROLES) {
+    const reponse = await client.request({
+      command: "account_nfts",
+      account: compte(role).address,
+      limit: 400,
+    });
+    const nft = reponse.result.account_nfts.find((n) => n.NFTokenID === nftId);
+    if (nft) {
+      return { detenteur: role, empreinteOnChain: xrpl.convertHexToString(nft.URI) };
+    }
+  }
+  throw new Error(`Le lot ${lot} est introuvable sur le ledger.`);
+}
+
+// Compare l'empreinte recalculée de la fiche à celle inscrite dans le NFT
+export async function verifierLot(client, lot) {
+  const { fiche } = lireLot(lot);
+  const empreinteCalculee =
+    "sha256:" + createHash("sha256").update(JSON.stringify(fiche)).digest("hex");
+  const { detenteur, empreinteOnChain } = await etatLot(client, lot);
+  return {
+    fiche,
+    detenteur,
+    empreinteCalculee,
+    empreinteOnChain,
+    conforme: empreinteCalculee === empreinteOnChain,
+  };
+}

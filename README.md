@@ -17,10 +17,10 @@ Réseau : XRPL Testnet (`wss://s.altnet.rippletest.net:51233`), explorateur : ht
 
 | Acteur | Adresse |
 | --- | --- |
-| Tannerie | rnqd1NrLay5ZPvureDtAELuwRjhNEjyuaq |
-| Transporteur | rNofAnZkW5XA7k2ZyeSA7TQu51oWCNLQaq |
-| Atelier | rHLQvCJn4PMwDHXwwwiLve2o8cngdof4MP |
-| Boutique | r9wMafdZUP3oSyp2yVj2q5M7d48LfuV94h |
+| Tannerie | rECKinLJeiYebGFgx243znjFct86papmy2 |
+| Transporteur | rnPUiHYpnQeAUtJaZAYh948ReNGXR3bYCL |
+| Atelier | rBzvW58bbfuSTFvi6j2Z8s7Af5JNyA9FNf |
+| Boutique | rnAgfkSdPNiszdid4BSLUw4iwGE8wLokAD |
 
 ## Architecture
 
