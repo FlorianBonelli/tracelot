@@ -64,10 +64,21 @@ export function lireLot(lot) {
   return JSON.parse(readFileSync(`data/${lot}.json`, "utf8"));
 }
 
-// Arrête tout si une transaction n'a pas réussi
+// Traduction des principaux codes de refus du ledger
+const EXPLICATIONS = {
+  tecNO_ENTRY: "cet acteur ne détient pas le lot",
+  tecNO_PERMISSION: "cet acteur n'a pas le droit de faire cette opération",
+  tecINSUFFICIENT_RESERVE: "le compte n'a pas assez de XRP pour la réserve",
+  tecNO_DST: "le compte destinataire n'existe pas sur le ledger",
+  tecEXPIRED: "l'offre a expiré",
+};
+
+// Arrête tout si une transaction n'a pas réussi, avec un message lisible
 function verifier(res, etape) {
-  const resultat = res.result.meta.TransactionResult;
-  if (resultat !== "tesSUCCESS") throw new Error(`${etape} refusée : ${resultat}`);
+  const code = res.result.meta.TransactionResult;
+  if (code === "tesSUCCESS") return;
+  const explication = EXPLICATIONS[code] ?? "transaction rejetée";
+  throw new Error(`${etape} refusée par le ledger : ${explication} (${code})`);
 }
 
 // Transfère la responsabilité d'un lot d'un acteur à un autre
