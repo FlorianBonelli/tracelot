@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" width="1200" height="640" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="fleche" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1d1b18"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="640" fill="#ffffff"/>
+  <text x="600" y="42" text-anchor="middle" font-size="24" font-weight="700" fill="#1d1b18">TraceLot : architecture on-chain / off-chain</text>
+
+  <!-- Zone off-chain -->
+  <rect x="30" y="70" width="720" height="540" rx="10" fill="#f6f3ee" stroke="#b9b1a3" stroke-width="1.5" stroke-dasharray="7 5"/>
+  <text x="50" y="102" font-size="15" font-weight="700" fill="#6b665e" letter-spacing="1">OFF-CHAIN : poste de l'équipe</text>
+
+  <!-- Zone on-chain -->
+  <rect x="840" y="70" width="330" height="540" rx="10" fill="#f4e9df" stroke="#8a4b23" stroke-width="1.5"/>
+  <text x="858" y="102" font-size="15" font-weight="700" fill="#8a4b23" letter-spacing="1">ON-CHAIN : XRPL Testnet</text>
+
+  <!-- Page web -->
+  <rect x="60" y="130" width="280" height="160" rx="8" fill="#ffffff" stroke="#1d1b18" stroke-width="1.5"/>
+  <text x="80" y="162" font-size="18" font-weight="700" fill="#1d1b18">Page web</text>
+  <text x="80" y="184" font-size="13" fill="#6b665e" font-family="Consolas, monospace">public/index.html</text>
+  <text x="80" y="218" font-size="14" fill="#1d1b18">Créer, transférer, consulter,</text>
+  <text x="80" y="238" font-size="14" fill="#1d1b18">vérifier un lot</text>
+  <text x="80" y="270" font-size="14" font-weight="600" fill="#8a4b23">Ne voit que les adresses publiques</text>
+
+  <!-- Ligne de commande -->
+  <rect x="60" y="400" width="280" height="160" rx="8" fill="#ffffff" stroke="#1d1b18" stroke-width="1.5"/>
+  <text x="80" y="432" font-size="18" font-weight="700" fill="#1d1b18">Ligne de commande</text>
+  <text x="80" y="454" font-size="13" fill="#6b665e" font-family="Consolas, monospace">cli/*.mjs</text>
+  <text x="80" y="488" font-size="14" fill="#1d1b18">Mêmes fonctions que la page,</text>
+  <text x="80" y="508" font-size="14" fill="#1d1b18">sans interface</text>
+  <text x="80" y="540" font-size="14" font-weight="600" fill="#8a4b23">Scénario de démo reproductible</text>
+
+  <!-- Serveur -->
+  <rect x="440" y="130" width="290" height="160" rx="8" fill="#ffffff" stroke="#1d1b18" stroke-width="1.5"/>
+  <text x="460" y="162" font-size="18" font-weight="700" fill="#1d1b18">Serveur Node.js</text>
+  <text x="460" y="184" font-size="13" fill="#6b665e" font-family="Consolas, monospace">server.mjs + src/tracelot.mjs</text>
+  <text x="460" y="218" font-size="14" fill="#1d1b18">Signe les transactions (xrpl.js)</text>
+  <text x="460" y="238" font-size="14" fill="#1d1b18">Recalcule les empreintes SHA-256</text>
+  <text x="460" y="270" font-size="14" font-weight="600" fill="#8a4b23">Seul à manipuler les seeds</text>
+
+  <!-- .env -->
+  <rect x="440" y="400" width="135" height="160" rx="8" fill="#ffffff" stroke="#1d1b18" stroke-width="1.5"/>
+  <text x="456" y="432" font-size="17" font-weight="700" fill="#1d1b18">Fichier .env</text>
+  <text x="456" y="466" font-size="14" fill="#1d1b18">Seeds des</text>
+  <text x="456" y="486" font-size="14" fill="#1d1b18">4 acteurs</text>
+  <text x="456" y="540" font-size="14" font-weight="600" fill="#8a4b23">Exclu de Git</text>
+
+  <!-- data -->
+  <rect x="595" y="400" width="135" height="160" rx="8" fill="#ffffff" stroke="#1d1b18" stroke-width="1.5"/>
+  <text x="611" y="432" font-size="17" font-weight="700" fill="#1d1b18">Dossier data</text>
+  <text x="611" y="466" font-size="14" fill="#1d1b18">Fiches des</text>
+  <text x="611" y="486" font-size="14" fill="#1d1b18">lots détaillées</text>
+  <text x="611" y="540" font-size="14" font-weight="600" fill="#8a4b23">Modifiables</text>
+
+  <!-- NFT -->
+  <rect x="860" y="130" width="280" height="160" rx="8" fill="#ffffff" stroke="#8a4b23" stroke-width="1.5"/>
+  <text x="880" y="162" font-size="18" font-weight="700" fill="#1d1b18">NFT du lot</text>
+  <text x="880" y="196" font-size="14" fill="#1d1b18">Empreinte SHA-256 de la fiche</text>
+  <text x="880" y="216" font-size="14" fill="#1d1b18">Émetteur : la tannerie</text>
+  <text x="880" y="236" font-size="14" fill="#1d1b18">Détenteur : l'acteur responsable</text>
+  <text x="880" y="270" font-size="14" font-weight="600" fill="#8a4b23">Aucune donnée personnelle</text>
+
+  <!-- Transactions -->
+  <rect x="860" y="320" width="280" height="150" rx="8" fill="#ffffff" stroke="#8a4b23" stroke-width="1.5"/>
+  <text x="880" y="352" font-size="18" font-weight="700" fill="#1d1b18">Transactions</text>
+  <text x="880" y="384" font-size="13" fill="#1d1b18" font-family="Consolas, monospace">NFTokenMint</text>
+  <text x="880" y="404" font-size="13" fill="#1d1b18" font-family="Consolas, monospace">NFTokenCreateOffer</text>
+  <text x="880" y="424" font-size="13" fill="#1d1b18" font-family="Consolas, monospace">NFTokenAcceptOffer</text>
+  <text x="880" y="452" font-size="14" font-weight="600" fill="#8a4b23">Horodatées, signées, avec Memo</text>
+
+  <!-- Explorateur -->
+  <rect x="860" y="500" width="280" height="90" rx="8" fill="#ffffff" stroke="#8a4b23" stroke-width="1.5"/>
+  <text x="880" y="532" font-size="18" font-weight="700" fill="#1d1b18">Explorateur public</text>
+  <text x="880" y="554" font-size="13" fill="#6b665e" font-family="Consolas, monospace">testnet.xrpl.org</text>
+  <text x="880" y="576" font-size="14" font-weight="600" fill="#8a4b23">Vérifiable par tous</text>
+
+  <!-- Flèches -->
+  <!-- Page <-> serveur -->
+  <line x1="344" y1="210" x2="436" y2="210" stroke="#1d1b18" stroke-width="1.8" marker-start="url(#fleche)" marker-end="url(#fleche)"/>
+  <text x="390" y="198" text-anchor="middle" font-size="13" fill="#1d1b18">API HTTP</text>
+  <text x="390" y="230" text-anchor="middle" font-size="13" fill="#6b665e">locale</text>
+
+  <!-- CLI -> logique -->
+  <line x1="344" y1="420" x2="452" y2="296" stroke="#1d1b18" stroke-width="1.8" marker-end="url(#fleche)"/>
+
+  <!-- Serveur -> .env -->
+  <line x1="507" y1="294" x2="507" y2="396" stroke="#1d1b18" stroke-width="1.8" marker-end="url(#fleche)"/>
+  <text x="519" y="350" font-size="13" fill="#1d1b18">lit</text>
+
+  <!-- Serveur <-> data -->
+  <line x1="662" y1="294" x2="662" y2="396" stroke="#1d1b18" stroke-width="1.8" marker-start="url(#fleche)" marker-end="url(#fleche)"/>
+  <text x="674" y="343" font-size="13" fill="#1d1b18">lit et</text>
+  <text x="674" y="360" font-size="13" fill="#1d1b18">écrit</text>
+
+  <!-- Serveur -> ledger -->
+  <line x1="734" y1="185" x2="856" y2="185" stroke="#8a4b23" stroke-width="2.2" marker-end="url(#fleche)"/>
+  <text x="795" y="157" text-anchor="middle" font-size="13" font-weight="600" fill="#8a4b23">transactions</text>
+  <text x="795" y="174" text-anchor="middle" font-size="13" font-weight="600" fill="#8a4b23">signées</text>
+
+  <!-- Ledger -> serveur -->
+  <line x1="856" y1="245" x2="734" y2="245" stroke="#1d1b18" stroke-width="1.8" marker-end="url(#fleche)"/>
+  <text x="795" y="264" text-anchor="middle" font-size="13" fill="#1d1b18">lecture de</text>
+  <text x="795" y="281" text-anchor="middle" font-size="13" fill="#1d1b18">l'historique</text>
+
+  <!-- NFT - transactions - explorateur -->
+  <line x1="1000" y1="294" x2="1000" y2="316" stroke="#8a4b23" stroke-width="1.8"/>
+  <line x1="1000" y1="474" x2="1000" y2="496" stroke="#8a4b23" stroke-width="1.8" marker-end="url(#fleche)"/>
+</svg>
