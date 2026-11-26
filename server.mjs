@@ -1,5 +1,6 @@
 import express from "express";
 import { readdirSync, existsSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   connecter,
   compte,
@@ -8,12 +9,15 @@ import {
   historiqueLot,
   etatLot,
   verifierLot,
+  verifierDocument,
+  nomDocument,
+  cheminDocument,
   lireLot,
   ROLES,
 } from "./src/tracelot.mjs";
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "8mb" })); // les documents joints arrivent encodés en base64
 app.use(express.static("public")); // sert la page web du dossier public
 
 // Une seule connexion au Testnet, rouverte si elle est tombée
@@ -26,6 +30,14 @@ async function ledger() {
 // Le nom d'un lot sert de nom de fichier : on n'accepte que lettres, chiffres et tirets
 function nomValide(lot) {
   return typeof lot === "string" && /^[A-Za-z0-9-]{1,20}$/.test(lot);
+}
+
+// Décode un fichier envoyé par la page (base64), avec une taille maximale de 5 Mo
+function decoderFichier(contenuBase64) {
+  const contenu = Buffer.from(String(contenuBase64 ?? ""), "base64");
+  if (contenu.length === 0) throw new Error("Le fichier est vide ou illisible.");
+  if (contenu.length > 5 * 1024 * 1024) throw new Error("Le fichier dépasse 5 Mo.");
+  return contenu;
 }
 
 // Liste des acteurs et de leurs adresses publiques (jamais les seeds)
@@ -63,11 +75,15 @@ app.post("/api/lots", async (req, res) => {
 // Transférer un lot
 app.post("/api/transferts", async (req, res) => {
   try {
-    const { lot, de, vers, motif } = req.body;
+    const { lot, de, vers, motif, document } = req.body;
     if (!nomValide(lot)) throw new Error("Nom de lot invalide.");
     if (de === vers) throw new Error("Le cédant et le receveur doivent être différents.");
+    // Document joint (facultatif) : seule son empreinte ira sur le ledger
+    const piece = document
+      ? { nom: nomDocument(document.nom), contenu: decoderFichier(document.contenuBase64) }
+      : undefined;
     res.json(
-      await transfererLot(await ledger(), lot, de, vers, motif || "Transfert de responsabilité")
+      await transfererLot(await ledger(), lot, de, vers, motif || "Transfert de responsabilité", piece)
     );
   } catch (erreur) {
     res.status(400).json({ erreur: erreur.message });
@@ -104,6 +120,33 @@ app.get("/api/lots/:lot/verification", async (req, res) => {
     res.json(await verifierLot(await ledger(), lot));
   } catch (erreur) {
     res.status(400).json({ erreur: erreur.message });
+  }
+});
+
+// Vérification d'un document : empreinte recalculée contre celle de la transaction
+// Sans fichier envoyé, on vérifie la copie off-chain gardée par le serveur
+app.post("/api/lots/:lot/documents/verification", async (req, res) => {
+  try {
+    const { lot } = req.params;
+    if (!nomValide(lot)) throw new Error("Nom de lot invalide.");
+    const { nom, contenuBase64 } = req.body;
+    const contenu = contenuBase64 ? decoderFichier(contenuBase64) : undefined;
+    res.json(await verifierDocument(await ledger(), lot, nom, contenu));
+  } catch (erreur) {
+    res.status(400).json({ erreur: erreur.message });
+  }
+});
+
+// Téléchargement de la copie off-chain d'un document
+app.get("/api/lots/:lot/documents/:nom", (req, res) => {
+  try {
+    const { lot, nom } = req.params;
+    if (!nomValide(lot)) throw new Error("Nom de lot invalide.");
+    const chemin = resolve(cheminDocument(lot, nom));
+    if (!existsSync(chemin)) throw new Error("Document introuvable.");
+    res.download(chemin);
+  } catch (erreur) {
+    res.status(404).json({ erreur: erreur.message });
   }
 });
 

@@ -49,6 +49,8 @@
   h2 { margin: 0 0 4px; font-size: 17px; }
   .aide { margin: 0 0 14px; color: var(--gris); font-size: 14px; }
   label { display: block; font-size: 13px; color: var(--gris); margin: 10px 0 3px; }
+  input[type="file"] { padding: 6px; font-size: 14px; }
+  .document { font-size: 14px; }
   input, select {
     width: 100%;
     padding: 8px 10px;
@@ -102,8 +104,9 @@
   .boutons button { margin-top: 0; }
   button.discret { background: #fff; color: var(--cuir); border: 1px solid var(--cuir); }
   #verdict { margin: 14px 0 10px; font-weight: 700; font-size: 16px; }
-  #verdict.ok { color: var(--ok); }
-  #verdict.erreur { color: var(--erreur); }
+  #verdict.ok, #verdict-doc.ok { color: var(--ok); }
+  #verdict.erreur, #verdict-doc.erreur { color: var(--erreur); }
+  #verdict-doc { margin: 14px 0 10px; font-weight: 700; font-size: 16px; }
   td.empreinte { font-family: Consolas, monospace; font-size: 13px; overflow-wrap: anywhere; }
   .demo { margin-top: 14px; font-size: 13px; color: var(--gris); }
   .quand { font-size: 13px; color: var(--gris); }
@@ -160,6 +163,8 @@
       </div>
       <label for="t-motif">Motif</label>
       <input id="t-motif" value="Remise au transporteur">
+      <label for="t-fichier">Document à joindre (facultatif)</label>
+      <input type="file" id="t-fichier">
       <button type="submit">Transférer</button>
       <div class="message" id="msg-transfert"></div>
     </form>
@@ -202,6 +207,36 @@
       </tbody>
     </table>
     <p class="demo">Les deux boutons de droite sont des outils de démonstration : ils modifient uniquement le fichier off-chain, jamais la blockchain.</p>
+  </section>
+
+  <section class="large">
+    <h2>5. Vérifier un document joint</h2>
+    <p class="aide">Le document reste hors chaîne. Son empreinte, inscrite dans la transaction de transfert, permet de prouver qu'il n'a pas été modifié.</p>
+    <div class="boutons">
+      <div>
+        <label for="d-lot">Lot</label>
+        <select id="d-lot"></select>
+      </div>
+      <div>
+        <label for="d-doc">Document joint</label>
+        <select id="d-doc"></select>
+      </div>
+      <div>
+        <label for="d-fichier">Fichier à vérifier (sinon la copie d'origine)</label>
+        <input type="file" id="d-fichier">
+      </div>
+      <button type="button" id="btn-verifier-doc">Vérifier le document</button>
+    </div>
+    <div class="message" id="msg-doc"></div>
+    <div id="verdict-doc"></div>
+    <table id="tableau-doc" hidden>
+      <tbody>
+        <tr><th>Joint par</th><td id="d-auteur"></td></tr>
+        <tr><th>Empreinte recalculée</th><td class="empreinte" id="d-calculee"></td></tr>
+        <tr><th>Empreinte on-chain</th><td class="empreinte" id="d-onchain"></td></tr>
+        <tr><th>Transaction</th><td id="d-preuve"></td></tr>
+      </tbody>
+    </table>
   </section>
 
   <section class="large">
@@ -293,6 +328,62 @@ async function chargerLots() {
   remplir($("t-lot"), noms);
   remplir($("h-lot"), noms);
   remplir($("v-lot"), noms);
+  remplir($("d-lot"), noms);
+}
+
+// Lit un fichier choisi dans la page et le renvoie encodé en base64
+function lireFichier(fichier) {
+  return new Promise((ok, echec) => {
+    const lecteur = new FileReader();
+    lecteur.onload = () => ok(String(lecteur.result).split(",")[1] || "");
+    lecteur.onerror = () => echec(new Error("Lecture du fichier impossible."));
+    lecteur.readAsDataURL(fichier);
+  });
+}
+
+// Liste les documents joints aux transactions d'un lot
+async function majDocuments() {
+  const lot = $("d-lot").value;
+  remplir($("d-doc"), []);
+  if (!lot) return;
+  try {
+    const evenements = await api(`/api/lots/${encodeURIComponent(lot)}/historique`);
+    if ($("d-lot").value !== lot) return;
+    const noms = evenements.filter((e) => e.document).map((e) => e.document.nom);
+    remplir($("d-doc"), noms);
+    message("msg-doc", noms.length ? "" : "Aucun document n'est joint aux transactions de ce lot.");
+  } catch (erreur) {
+    message("msg-doc", erreur.message, "erreur");
+  }
+}
+
+// Compare l'empreinte d'un document à celle inscrite dans la transaction
+async function verifierDocumentJoint() {
+  const lot = $("d-lot").value;
+  const nom = $("d-doc").value;
+  if (!lot || !nom) return;
+  message("msg-doc", "Lecture du ledger en cours…");
+  $("verdict-doc").textContent = "";
+  $("verdict-doc").className = "";
+  try {
+    const fichier = $("d-fichier").files[0];
+    const corps = { nom };
+    if (fichier) corps.contenuBase64 = await lireFichier(fichier);
+    const r = await api(`/api/lots/${encodeURIComponent(lot)}/documents/verification`, corps);
+    $("d-auteur").textContent = `${r.jointPar}, le ${new Date(r.date).toLocaleString("fr-FR")}`;
+    $("d-calculee").textContent = "sha256:" + r.empreinteCalculee;
+    $("d-onchain").textContent = "sha256:" + r.empreinteOnChain;
+    $("d-preuve").replaceChildren(lien(`${EXPLORATEUR}/transactions/${r.hash}`, "Preuve dans l'explorateur"));
+    $("tableau-doc").hidden = false;
+    const source = fichier ? `Le fichier « ${fichier.name} »` : "La copie d'origine";
+    $("verdict-doc").className = r.conforme ? "ok" : "erreur";
+    $("verdict-doc").textContent = r.conforme
+      ? `${source} est authentique : les deux empreintes sont identiques.`
+      : `${source} a été modifié : les empreintes diffèrent.`;
+    message("msg-doc", "");
+  } catch (erreur) {
+    message("msg-doc", erreur.message, "erreur");
+  }
 }
 
 // Lit le détenteur actuel sur le ledger et prépare le formulaire de transfert
@@ -384,6 +475,14 @@ async function afficherHistorique(lot) {
         memo.textContent = "Memo : " + e.memo;
         li.append(memo);
       }
+      if (e.document) {
+        const doc = document.createElement("div");
+        doc.className = "document";
+        doc.append("Document joint : ");
+        doc.append(lien(`/api/lots/${encodeURIComponent(lot)}/documents/${encodeURIComponent(e.document.nom)}`, e.document.nom));
+        doc.append(` (sha256:${e.document.empreinte.slice(0, 16)}…)`);
+        li.append(doc);
+      }
       li.append(lien(`${EXPLORATEUR}/transactions/${e.hash}`, "Preuve dans l'explorateur"));
       $("frise").append(li);
     }
@@ -424,20 +523,26 @@ $("form-transfert").addEventListener("submit", async (evenement) => {
   message("msg-transfert", "Deux transactions en cours sur le Testnet…");
   try {
     const lot = $("t-lot").value;
-    const r = await api("/api/transferts", {
-      lot,
-      de: $("t-de").value,
-      vers: $("t-vers").value,
-      motif: $("t-motif").value,
-    });
+    const fichier = $("t-fichier").files[0];
+    const de = $("t-de").value;
+    const vers = $("t-vers").value;
+    const corps = { lot, de, vers, motif: $("t-motif").value };
+    if (fichier) {
+      corps.document = { nom: fichier.name, contenuBase64: await lireFichier(fichier) };
+    }
+    const r = await api("/api/transferts", corps);
+    $("t-fichier").value = "";
     message(
       "msg-transfert",
-      `Lot ${lot} transféré : ${$("t-de").value} > ${$("t-vers").value}.`,
+      `Lot ${lot} transféré : ${de} > ${vers}.` +
+        (r.document ? ` Document joint : ${r.document.nom}.` : ""),
       "ok",
       `${EXPLORATEUR}/transactions/${r.hashAcceptation}`
     );
     await majDetenteur();
     await afficherHistorique(lot);
+    $("d-lot").value = lot;
+    await majDocuments();
   } catch (erreur) {
     message("msg-transfert", "Transfert refusé : " + erreur.message, "erreur");
   }
@@ -449,6 +554,8 @@ $("t-lot").addEventListener("change", majDetenteur);
 $("btn-verifier").addEventListener("click", verifierIntegrite);
 $("btn-falsifier").addEventListener("click", () => outilDemo("falsification"));
 $("btn-restaurer").addEventListener("click", () => outilDemo("restauration"));
+$("d-lot").addEventListener("change", majDocuments);
+$("btn-verifier-doc").addEventListener("click", verifierDocumentJoint);
 
 await_demarrage();
 async function await_demarrage() {
@@ -456,6 +563,7 @@ async function await_demarrage() {
     await chargerActeurs();
     await chargerLots();
     await majDetenteur();
+    await majDocuments();
   } catch (erreur) {
     message("msg-historique", "Serveur injoignable : " + erreur.message, "erreur");
   }
