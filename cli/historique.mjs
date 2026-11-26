@@ -25,8 +25,11 @@ for (const e of evenements) {
     detenteur = e.acteur;
   }
   console.log(e.date, "|", texte);
-  if (e.memo) console.log("   Memo   :", e.memo);
-  console.log("   Preuve : https://testnet.xrpl.org/transactions/" + e.hash);
+  if (e.memo) console.log("   Memo     :", e.memo);
+  if (e.document) {
+    console.log("   Document :", e.document.nom, "(sha256:" + e.document.empreinte.slice(0, 16) + "…)");
+  }
+  console.log("   Preuve   : https://testnet.xrpl.org/transactions/" + e.hash);
 }
 
 console.log("\nDétenteur actuel :", detenteur);
